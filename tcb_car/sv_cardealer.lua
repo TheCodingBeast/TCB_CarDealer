@@ -69,11 +69,10 @@ function TCBDealer.spawnDealer()
 		bubble:Spawn()
 
 		--> Input
-		function dealer:AcceptInput(name, activator, caller, data)
+		function dealer:AcceptInput(name, activator, caller)
 			if name == "Use" and IsValid(caller) then
 				
 				--> Variables
-				local data = data or {}
 				local vehicles = {}
 
 				--> Vehicles
