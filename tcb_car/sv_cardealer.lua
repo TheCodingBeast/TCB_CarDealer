@@ -77,7 +77,7 @@ function TCBDealer.spawnDealer()
 
 				--> Vehicles
 				MySQLite.query(string.format([[SELECT * FROM tcb_cardealer WHERE steamID = %s]], MySQLite.SQLStr(caller:SteamID())), function(data)
-					for k, v in pairs(data) do
+					for k, v in pairs(data or {}) do
 						table.insert(vehicles, v.vehicle)
 					end
 				end)
