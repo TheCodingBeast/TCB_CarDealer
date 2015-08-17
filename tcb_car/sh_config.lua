@@ -18,15 +18,18 @@ TCBDealer.vehicleTable = {}
 --[[---------------------------------------------------------
 	Version
 -----------------------------------------------------------]]
-TCBDealer.version = 1.0
+TCBDealer.version = 1.1
 
 --[[---------------------------------------------------------
 	Settings
 -----------------------------------------------------------]]
 TCBDealer.settings.testDriveLength = 20
 TCBDealer.settings.salePercentage = 75
+TCBDealer.settings.randomColor = true
 TCBDealer.settings.autoEnter = false
 TCBDealer.settings.precache = true
+
+TCBDealer.settings.frameTitle = "TCB"
 
 --[[---------------------------------------------------------
 	Dealer Spawns
@@ -51,12 +54,12 @@ TCBDealer.dealerSpawns["rp_downtown_v4c_v2"] = {
 }
 
 --[[---------------------------------------------------------
-	Vehicles
+	Vehicles - http://facepunch.com/showthread.php?t=1481400
 -----------------------------------------------------------]]
 TCBDealer.vehicleTable["audir8tdm"] = {
 	name = "Audi R9",
 	mdl = "models/tdmcars/audir8.mdl",
-	price = 50000,
+	price = 50000
 }
 
 TCBDealer.vehicleTable["dbstdm"] = {
@@ -87,6 +90,7 @@ TCBDealer.vehicleTable["458spidtdm"] = {
 	name = "Ferrari 458 Spider",
 	mdl = "models/tdmcars/fer_458spid.mdl",
 	price = 30000,
+	color = Color(255, 40, 0)
 }
 
 TCBDealer.vehicleTable["p1tdm"] = {

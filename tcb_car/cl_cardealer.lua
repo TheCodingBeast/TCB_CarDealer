@@ -62,9 +62,6 @@ local function carDealer()
 	local w = 450
 	local h = 602
 
-	--> Sort
-	//table.sort(vehiclesTable,)
-
 	--> Frame
 	local frame = vgui.Create("DFrame")
 	frame:SetPos(ScrW()/2-w/2, ScrH())
@@ -81,7 +78,7 @@ local function carDealer()
 		draw.RoundedBox(0, 1, 1, w-2, h-2, Color(255, 255, 255, 255))
 
 		draw.RoundedBox(0, 1, 1, w-2, 40, Color(63, 81, 181, 255))
-		draw.SimpleText("TCB - Car Dealer", "TCBDealer_24", 11, 41-20, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		draw.SimpleText(TCBDealer.settings.frameTitle.." - Car Dealer", "TCBDealer_24", 11, 41-20, Color(255, 255, 255, 255), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 
 	end
 
@@ -125,9 +122,80 @@ local function carDealer()
 	slide:SetPos(0, 0)
 	slide:SetSize(1, panel:GetTall()+1)
 
+	--> Store
+	local cvehicle = nil
+	local currentVehicle = LocalPlayer():GetNWEntity("currentVehicle")
+	if IsValid(currentVehicle) and LocalPlayer():GetPos():Distance(currentVehicle:GetPos()) <= 350 then
+		cvehicle = currentVehicle
+	end
+
+	local posY = 0
+	if cvehicle then
+
+		--> Panel
+		local store = vgui.Create("DPanel", panel)
+		store:SetPos(0, posY)
+		store:SetSize((w-2)-16, 80)
+
+		store.Paint = function(pnl, w, h)
+
+			--> Background
+			draw.RoundedBox(0, 0, 0, w, h, Color(0, 0, 0, 25))
+			draw.RoundedBox(0, 0, h-1, w, 1, Color(0, 0, 0, 50))
+
+			--> Model
+			draw.RoundedBox(2, 4, 4, h-8, h-8, Color(0, 0, 0, 40))
+
+			--> Name
+			draw.SimpleText("Closest Vehicle", "TCBDealer_24", w/2-15, 25, Color(0, 0, 0, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+			--> Price
+			draw.SimpleText(cvehicle:GetNWString("dealerName"), "TCBDealer_22", w/2-15, 55, Color(0, 0, 0, 225), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+		end
+
+		--> Model Preview
+		local model = vgui.Create("DModelPanel", store)
+		model:SetSize(store:GetTall()-8, store:GetTall()-8)
+		model:SetPos(4, 4)
+		model:SetModel(cvehicle:GetModel())
+		model:SetColor(cvehicle:GetColor())
+		model:SetCamPos(Vector(150, -100, 50))
+
+		--> Store
+		local storeBtn = vgui.Create("DButton", store)
+		storeBtn:SetSize(100, store:GetTall()/2-5)
+		storeBtn:SetPos(store:GetWide()-104, 4+storeBtn:GetTall()/2+1)
+		storeBtn:SetText("")
+
+		storeBtn.DoClick = function()
+			net.Start("TCBDealerStore")
+				net.WriteInt(dealerID, 32)
+			net.SendToServer(LocalPlayer())
+
+			frame:MoveTo(ScrW()/2-w/2, ScrH(), 0.2, 0, -1, function()
+				frame:Remove()
+			end)
+		end
+
+		storeBtn.Paint = function(pnl, w, h)
+
+			draw.RoundedBox(3, 0, 0, w, h, Color(231, 76, 60, 255))
+			draw.SimpleText("Store Vehicle", "DermaDefaultBold", w/2, h/2-1, Color(255, 255, 255, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+
+			if storeBtn.Hovered then
+				draw.RoundedBox(3, 0, 0, w, h, Color(255, 255, 255, 6))
+			end
+
+		end
+
+		--> Position
+		posY = posY + store:GetTall()
+
+	end
+
 	--> Vehicles
 	local count = 0
-	local posY = 0
 	for k,v in SortedPairsByMemberValue(vehiclesTable, "price", true) do
 
 		--> Check
@@ -165,8 +233,13 @@ local function carDealer()
 		model:SetSize(vehicle:GetTall()-8, vehicle:GetTall()-8)
 		model:SetPos(4, 4)
 		model:SetModel(v.mdl)
-		model:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
 		model:SetCamPos(Vector(150, -100, 50))
+
+		if v.color then
+			model:SetColor(v.color)
+		elseif TCBDealer.settings.randomColor then
+			model:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
+		end
 
 		--> Buttons
 		if !table.HasValue(ownedTable, k) then

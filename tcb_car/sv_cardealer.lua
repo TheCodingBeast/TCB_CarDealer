@@ -19,6 +19,7 @@ util.AddNetworkString("TCBDealerSpawn")
 util.AddNetworkString("TCBDealerPurchase")
 util.AddNetworkString("TCBDealerSell")
 util.AddNetworkString("TCBDealerChat")
+util.AddNetworkString("TCBDealerStore")
 
 --[[---------------------------------------------------------
 	Database Setup
@@ -329,6 +330,8 @@ function TCBDealer.spawnVehicle(length, ply)
 		end
 	end
 
+	spawnedVehicle.VehicleTable = vehicleList
+
 	spawnedVehicle:SetPos(spawnPoint.pos)
 	spawnedVehicle:SetAngles(spawnPoint.ang)
 	spawnedVehicle:Spawn()
@@ -337,11 +340,17 @@ function TCBDealer.spawnVehicle(length, ply)
 	spawnedVehicle:keysOwn(ply)
 	spawnedVehicle:keysLock()
 
+	spawnedVehicle:SetNWString("dealerName", vehicle.name)
+
 	gamemode.Call(PlayerSpawnedVehicle, ply, spawnedVehicle)
-	ply.currentVehicle = spawnedVehicle
+	ply:SetNWEntity("currentVehicle", spawnedVehicle)
 
 	--> Color
-	spawnedVehicle:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
+	if vehicle.color then
+		spawnedVehicle:SetColor(vehicle.color)
+	elseif TCBDealer.settings.randomColor then
+		spawnedVehicle:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
+	end
 
 	--> Test Drive
 	ply.vehicleTest = false
@@ -382,11 +391,47 @@ end
 net.Receive("TCBDealerSpawn", TCBDealer.spawnVehicle)
 
 --[[---------------------------------------------------------
+	Store Vehicle
+-----------------------------------------------------------]]
+function TCBDealer.storeVehicle(length, ply)
+
+	--> Network
+	local dealerID = net.ReadInt(32)
+
+	--> Dealer
+	if !TCBDealer.dealerSpawns[game.GetMap()][dealerID] then
+		DarkRP.notify(ply, 1, 4, "The car dealer wasn't found.") 
+		return 
+	end
+	local dealer = TCBDealer.dealerSpawns[game.GetMap()][dealerID]
+	
+	local dealerResult = TCBDealer.dealerRange(ply, dealer)
+	if !dealerResult then
+		DarkRP.notify(ply, 1, 4, "You are not in range of the car dealer!") 
+		return 
+	end
+
+	--> Vehicle
+	local currentVehicle = ply:GetNWEntity("currentVehicle")
+	if IsValid(currentVehicle) and currentVehicle:GetPos():Distance(ply:GetPos()) <= 350 then
+		TCBDealer.removeVehicle(ply)
+		DarkRP.notify(ply, 3, 4, "Your vehicle was stored in your garage!")
+		return
+	else
+		DarkRP.notify(ply, 1, 4, "The vehicle is not in range.") 
+		return
+	end 
+
+end
+net.Receive("TCBDealerStore", TCBDealer.storeVehicle)
+
+--[[---------------------------------------------------------
 	Remove Vehicle
 -----------------------------------------------------------]]
 function TCBDealer.removeVehicle(ply)
-	if IsValid(ply.currentVehicle) then
-		ply.currentVehicle:Remove()
+	local currentVehicle = ply:GetNWEntity("currentVehicle")
+	if IsValid(currentVehicle) then
+		currentVehicle:Remove()
 	end
 end
 hook.Add("PlayerDisconnected", "TCBDealer.removeVehicle", TCBDealer.removeVehicle)
@@ -395,8 +440,9 @@ hook.Add("PlayerDisconnected", "TCBDealer.removeVehicle", TCBDealer.removeVehicl
 	Leave Vehicle
 -----------------------------------------------------------]]
 function TCBDealer.leaveVehicle(ply)
-	if IsValid(ply.currentVehicle) and ply.vehicleTest == true then
-		ply.currentVehicle:Remove()
+	local currentVehicle = ply:GetNWEntity("currentVehicle")
+	if IsValid(currentVehicle) and ply.vehicleTest == true then
+		currentVehicle:Remove()
 		ply.vehicleTest = false
 	end
 end
