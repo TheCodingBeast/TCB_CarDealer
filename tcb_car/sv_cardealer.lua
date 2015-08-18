@@ -174,7 +174,12 @@ function TCBDealer.purchaseVehicle(length, ply)
 		DarkRP.notify(ply, 1, 4, "The requested vehicle is not for sale.") 
 		return 
 	end
-	vehicle = TCBDealer.vehicleTable[vehID]
+	local vehicle = TCBDealer.vehicleTable[vehID]
+
+	local vehicleInfo = list.Get("Vehicles")[vehID]
+	if !vehicleInfo then return end
+
+	local vehName = vehicle.name or vehicleInfo.Name
 
 	--> CustomCheck
 	if vehicle.customCheck and !vehicle.customCheck(ply) then 
@@ -197,7 +202,7 @@ function TCBDealer.purchaseVehicle(length, ply)
 	MySQLite.query(string.format([[INSERT INTO tcb_cardealer (steamID, vehicle) VALUES (%s, %s)]], MySQLite.SQLStr(ply:SteamID()), MySQLite.SQLStr(vehID)))
 
 	--> Notify
-	DarkRP.notify(ply, 3, 4, "You bought a "..vehicle.name.." for "..DarkRP.formatMoney(vehicle.price).."!")
+	DarkRP.notify(ply, 3, 4, "You bought a "..vehName.." for "..DarkRP.formatMoney(vehicle.price).."!")
 
 end
 net.Receive("TCBDealerPurchase", TCBDealer.purchaseVehicle)
@@ -214,6 +219,11 @@ function TCBDealer.sellVehicle(length, ply)
 		return 
 	end
 	vehicle = TCBDealer.vehicleTable[vehID]
+
+	local vehicleInfo = list.Get("Vehicles")[vehID]
+	if !vehicleInfo then return end
+
+	local vehName = vehicle.name or vehicleInfo.Name
 
 	--> Own
 	local vehOwn = {}
@@ -237,7 +247,7 @@ function TCBDealer.sellVehicle(length, ply)
 	MySQLite.query(string.format([[DELETE FROM tcb_cardealer WHERE steamID = %s AND vehicle = %s]], MySQLite.SQLStr(ply:SteamID()), MySQLite.SQLStr(vehID)))
 
 	--> Notify
-	DarkRP.notify(ply, 3, 4, "You sold your "..vehicle.name.." for "..DarkRP.formatMoney(amount).."!")
+	DarkRP.notify(ply, 3, 4, "You sold your "..vehName.." for "..DarkRP.formatMoney(amount).."!")
 
 end
 net.Receive("TCBDealerSell", TCBDealer.sellVehicle)
@@ -340,7 +350,7 @@ function TCBDealer.spawnVehicle(length, ply)
 	spawnedVehicle:keysOwn(ply)
 	spawnedVehicle:keysLock()
 
-	spawnedVehicle:SetNWString("dealerName", vehicle.name)
+	spawnedVehicle:SetNWString("dealerName", vehicle.name or vehicleList.Name)
 
 	gamemode.Call(PlayerSpawnedVehicle, ply, spawnedVehicle)
 	ply:SetNWEntity("currentVehicle", spawnedVehicle)
@@ -348,6 +358,21 @@ function TCBDealer.spawnVehicle(length, ply)
 	--> Color
 	if vehicle.color then
 		spawnedVehicle:SetColor(vehicle.color)
+	elseif TCBDealer.settings.colorPicker then
+
+		--> Variables
+		local varColR = ply:GetInfoNum("tcb_cardealer_r", 0)
+		local varColG = ply:GetInfoNum("tcb_cardealer_g", 0)
+		local varColB = ply:GetInfoNum("tcb_cardealer_b", 0)
+
+		--> Checks
+		if varColR < 0 then varColR = 0 elseif varColR > 255 then varColR = 255 end
+		if varColG < 0 then varColG = 0 elseif varColG > 255 then varColR = 255 end
+		if varColB < 0 then varColB = 0 elseif varColB > 255 then varColB = 255 end
+
+		--> Set Color
+		spawnedVehicle:SetColor(Color(varColR, varColG, varColB, 255))
+
 	elseif TCBDealer.settings.randomColor then
 		spawnedVehicle:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
 	end

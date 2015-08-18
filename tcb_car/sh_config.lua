@@ -18,13 +18,14 @@ TCBDealer.vehicleTable = {}
 --[[---------------------------------------------------------
 	Version
 -----------------------------------------------------------]]
-TCBDealer.version = 1.1
+TCBDealer.version = 1.2
 
 --[[---------------------------------------------------------
 	Settings
 -----------------------------------------------------------]]
 TCBDealer.settings.testDriveLength = 20
 TCBDealer.settings.salePercentage = 75
+TCBDealer.settings.colorPicker = true
 TCBDealer.settings.randomColor = true
 TCBDealer.settings.autoEnter = false
 TCBDealer.settings.precache = true
@@ -57,14 +58,10 @@ TCBDealer.dealerSpawns["rp_downtown_v4c_v2"] = {
 	Vehicles - http://facepunch.com/showthread.php?t=1481400
 -----------------------------------------------------------]]
 TCBDealer.vehicleTable["audir8tdm"] = {
-	name = "Audi R9",
-	mdl = "models/tdmcars/audir8.mdl",
 	price = 50000
 }
 
 TCBDealer.vehicleTable["dbstdm"] = {
-	name = "Aston Martin DBS",
-	mdl = "models/tdmcars/dbs.mdl",
 	price = 10000,
 
 	customCheck = function(ply) return table.HasValue({"superadmin", "admin"}, ply:GetUserGroup()) end,
@@ -72,8 +69,6 @@ TCBDealer.vehicleTable["dbstdm"] = {
 }
 
 TCBDealer.vehicleTable["escaladetdm"] = {
-	name = "Cadillac Escalade 2012",
-	mdl = "models/tdmcars/cad_escalade.mdl",
 	price = 20000,
 
 	customCheck = function(ply) return CLIENT or table.HasValue({"superadmin", "admin", "donator"}, ply:GetUserGroup()) end,
@@ -81,32 +76,22 @@ TCBDealer.vehicleTable["escaladetdm"] = {
 }
 
 TCBDealer.vehicleTable["s5tdm"] = {
-	name = "Audi S5",
-	mdl = "models/tdmcars/s5.mdl",
 	price = 15000,
 }
 
 TCBDealer.vehicleTable["458spidtdm"] = {
-	name = "Ferrari 458 Spider",
-	mdl = "models/tdmcars/fer_458spid.mdl",
 	price = 30000,
 	color = Color(255, 40, 0)
 }
 
 TCBDealer.vehicleTable["p1tdm"] = {
-	name = "McLaren P1",
-	mdl = "models/tdmcars/mclaren_p1.mdl",
 	price = 45000,
 }
 
 TCBDealer.vehicleTable["st1tdm"] = {
-	name = "Zenvo ST1",
-	mdl = "models/tdmcars/zen_st1.mdl",
 	price = 40000,
 }
 
 TCBDealer.vehicleTable["raptorsvttdm"] = {
-	name = "Ford Raptor SVT",
-	mdl = "models/tdmcars/for_raptor.mdl",
 	price = 25000,
 }

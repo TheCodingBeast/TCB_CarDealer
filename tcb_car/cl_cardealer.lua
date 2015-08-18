@@ -23,6 +23,13 @@ for i=0,24 do
 end
 
 --[[---------------------------------------------------------
+	Convars
+-----------------------------------------------------------]]
+CreateClientConVar("tcb_cardealer_r", 0, true, true)
+CreateClientConVar("tcb_cardealer_g", 0, true, true)
+CreateClientConVar("tcb_cardealer_b", 0, true, true)
+
+--[[---------------------------------------------------------
 	Chat Text
 -----------------------------------------------------------]]
 local function chatText()
@@ -107,6 +114,88 @@ local function carDealer()
 
 	end
 
+	--> Color Picker
+	if TCBDealer.settings.colorPicker then
+
+		--> Convars
+		local clrValR = GetConVar("tcb_cardealer_r"):GetInt() or 0
+		local clrValG = GetConVar("tcb_cardealer_g"):GetInt() or 0
+		local clrValB = GetConVar("tcb_cardealer_b"):GetInt() or 0
+
+		--> Variables
+		local pickerExapnded = false
+
+		local pickerPanel = nil
+		local pickerColor = Color(clrValR, clrValG, clrValB, 255)
+
+		--> Color
+		local color = vgui.Create("DButton", frame)
+		color:SetPos(w-26-12-close:GetWide(), 41/2-24/2)
+		color:SetSize(26, 26)
+		color:SetText("")
+
+		color.DoClick = function()
+
+			if pickerExapnded then
+
+				--> Variables
+				pickerPanel:Remove()
+				pickerExapnded = false
+
+			else
+
+				--> Variables
+				pickerExapnded = true
+
+				--> Panel
+				local colorPanel = vgui.Create("DPanel", frame)
+				colorPanel:SetSize(200, 200)
+				colorPanel:SetPos(w-277, 40-11)
+
+				colorPanel.Paint = function(pnl, w, h)
+					draw.RoundedBox(3, 0, 0, w, h, Color(0, 0, 0, 100))
+					draw.RoundedBoxEx(3, 2, 2, w-4, h-4, pickerColor, true, false, true, true)
+					draw.RoundedBox(0, w-24, 0, 22, 2, pickerColor)
+				end
+
+				pickerPanel = colorPanel
+
+				--> Mixer
+				local mixer = vgui.Create("DColorMixer", colorPanel)
+				mixer:Dock(FILL)
+				mixer:DockPadding(10, 10, 10, 10)
+				mixer:SetWangs(false)
+				mixer:SetAlphaBar(false)
+				mixer:SetPalette(false)
+				mixer:SetColor(pickerColor)
+
+				--> Change
+				mixer.ValueChanged = function()
+					local clr = mixer:GetColor()
+					pickerColor = clr
+
+					RunConsoleCommand("tcb_cardealer_r", clr.r)
+					RunConsoleCommand("tcb_cardealer_g", clr.g)
+					RunConsoleCommand("tcb_cardealer_b", clr.b)
+				end
+
+			end
+
+		end
+
+		color.Paint = function(pnl, w, h)
+
+			draw.RoundedBox(3, 0, 0, w, h, Color(0, 0, 0, 100))
+			draw.RoundedBox(3, 2, 2, w-4, h-4, pickerColor)
+
+			if color.Hovered then
+				draw.RoundedBox(3, 2, 2, w-4, h-4, Color(255, 255, 255, 6))
+			end
+
+		end
+
+	end
+
 	--> Panel
 	local panel = vgui.Create("DScrollPanel", frame)
 	panel:SetPos(1, 41)
@@ -146,10 +235,10 @@ local function carDealer()
 			--> Model
 			draw.RoundedBox(2, 4, 4, h-8, h-8, Color(0, 0, 0, 40))
 
-			--> Name
+			--> Title
 			draw.SimpleText("Closest Vehicle", "TCBDealer_24", w/2-15, 25, Color(0, 0, 0, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
-			--> Price
+			--> Name
 			draw.SimpleText(cvehicle:GetNWString("dealerName"), "TCBDealer_22", w/2-15, 55, Color(0, 0, 0, 225), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
 		end
@@ -204,6 +293,16 @@ local function carDealer()
 		--> Count
 		count = count+1;
 
+		--> Vehicle Info
+		local vehicleInfo = {}
+		if !v.name or !v.mdl then
+			vehicleInfo = list.Get("Vehicles")[k]
+			if !vehicleInfo then continue end
+		end
+
+		local vehName = v.name or vehicleInfo.Name
+		local vehMdl = v.mdl or vehicleInfo.Model
+
 		--> Vehicle Panel
 		local vehicle = vgui.Create("DPanel", panel)
 		vehicle:SetPos(0, posY)
@@ -221,7 +320,7 @@ local function carDealer()
 			draw.RoundedBox(2, 4, 4, h-8, h-8, Color(0, 0, 0, 40))
 
 			--> Name
-			draw.SimpleText(v.name, "TCBDealer_24", w/2-15, 25, Color(0, 0, 0, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+			draw.SimpleText(vehName, "TCBDealer_24", w/2-15, 25, Color(0, 0, 0, 255), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 
 			--> Price
 			draw.SimpleText("Price: "..DarkRP.formatMoney(v.price), "TCBDealer_22", w/2-15, 55, Color(0, 0, 0, 225), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
@@ -232,7 +331,7 @@ local function carDealer()
 		local model = vgui.Create("DModelPanel", vehicle)
 		model:SetSize(vehicle:GetTall()-8, vehicle:GetTall()-8)
 		model:SetPos(4, 4)
-		model:SetModel(v.mdl)
+		model:SetModel(vehMdl)
 		model:SetCamPos(Vector(150, -100, 50))
 
 		if v.color then
