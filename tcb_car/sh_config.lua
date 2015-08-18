@@ -28,6 +28,7 @@ TCBDealer.settings.salePercentage = 75
 TCBDealer.settings.colorPicker = true
 TCBDealer.settings.randomColor = true
 TCBDealer.settings.autoEnter = false
+TCBDealer.settings.npcBubble = true
 TCBDealer.settings.precache = true
 
 TCBDealer.settings.frameTitle = "TCB"

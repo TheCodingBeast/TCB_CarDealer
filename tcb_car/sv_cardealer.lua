@@ -69,13 +69,18 @@ function TCBDealer.spawnDealer()
 		dealer.id = k
 
 		--> Bubble
-		local bubble = ents.Create("base_anim")
-		bubble:SetPos(v.pos + Vector(0, 0, 25))
-		bubble:SetAngles(v.ang)
-		bubble:SetModel("models/extras/info_speech.mdl")
-		bubble:SetMoveType(MOVETYPE_NONE)
-		bubble:SetSolid(SOLID_NONE)
-		bubble:Spawn()
+		if TCBDealer.settings.npcBubble then
+
+			--> Spawn
+			local bubble = ents.Create("base_anim")
+			bubble:SetPos(v.pos + Vector(0, 0, 25))
+			bubble:SetAngles(v.ang)
+			bubble:SetModel("models/extras/info_speech.mdl")
+			bubble:SetMoveType(MOVETYPE_NONE)
+			bubble:SetSolid(SOLID_NONE)
+			bubble:Spawn()
+
+		end
 
 		--> Input
 		function dealer:AcceptInput(name, activator, caller)
