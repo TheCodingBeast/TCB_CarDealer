@@ -7,11 +7,6 @@
 ---------------------------------------------------------------------------*/
 
 --[[---------------------------------------------------------
-	Include
------------------------------------------------------------]]
-include("sh_config.lua")
-
---[[---------------------------------------------------------
 	Spawn Dealer
 -----------------------------------------------------------]]
 util.AddNetworkString("TCBDealerMenu")
@@ -111,7 +106,10 @@ function TCBDealer.spawnDealer()
 	if TCBDealer.settings.precache then
 		for k,v in pairs(TCBDealer.vehicleTable) do
 			
-			util.PrecacheModel(v.mdl)
+			local vehicleList = list.Get("Vehicles")[k]
+			if !vehicleList then return end
+
+			util.PrecacheModel(vehicleList.Model)
 
 		end	
 	end
@@ -274,6 +272,16 @@ function TCBDealer.spawnVehicle(length, ply)
 	end
 	vehicle = TCBDealer.vehicleTable[vehID]
 
+	--> CustomCheck
+	if vehicle.customCheck and !vehicle.customCheck(ply) then 
+		if vehicle.CustomCheckFailMsg then
+			DarkRP.notify(ply, 1, 4, vehicle.CustomCheckFailMsg)
+		else
+			DarkRP.notify(ply, 1, 4, "This vehicle is currently not available for you.")
+		end
+		return
+	end
+
 	--> Own
 	if !testDrive then
 		
@@ -307,26 +315,41 @@ function TCBDealer.spawnVehicle(length, ply)
 
 	--> Spawns
 	local spawnPoint = {}
+	local debugPoint = ""
 
-	for k,v in pairs(dealer.spawns) do
-		local entities = ents.FindInBox(Vector(v.pos.x + 100, v.pos.y + 100, v.pos.z - 150), Vector(v.pos.x - 100, v.pos.y - 100, v.pos.z + 150))
-		
-		local found = 0
-		for _,v in pairs(entities) do
-			if v:GetClass() != "physgun_beam" then
-				found = 1
+	if TCBDealer.settings.checkSpawn then
+		for k,v in pairs(dealer.spawns) do
+			local entities = ents.FindInBox(Vector(v.pos.x + 100, v.pos.y + 100, v.pos.z - 150), Vector(v.pos.x - 100, v.pos.y - 100, v.pos.z + 150))
+			
+			local found = 0
+			for _,v in pairs(entities) do
+				if v:GetClass() != "physgun_beam" then
+					found = 1
+
+					if TCBDealer.settings.debug then
+						debugPoint = debugPoint..v:GetClass()..", "
+					end
+
+					break
+				end
+			end
+
+			if found == 0 then
+				spawnPoint = v
 				break
 			end
 		end
-
-		if found == 0 then
-			spawnPoint = v
-			break
-		end
+	else
+		spawnPoint = dealer.spawns[math.random(#dealer.spawns)]
 	end
 
 	if table.Count(spawnPoint) == 0 then
-		DarkRP.notify(ply, 1, 4, "No spawn point was found.") 
+		DarkRP.notify(ply, 1, 4, "Something is blocking the spawn points.")
+
+		if TCBDealer.settings.debug then
+			DarkRP.notify(ply, 1, 10, "[DEBUG] Classes: "..debugPoint)
+		end
+
 		return 
 	end
 
@@ -356,6 +379,7 @@ function TCBDealer.spawnVehicle(length, ply)
 	spawnedVehicle:keysLock()
 
 	spawnedVehicle:SetNWString("dealerName", vehicle.name or vehicleList.Name)
+	spawnedVehicle:SetNWString("dealerClass", vehID)
 
 	gamemode.Call(PlayerSpawnedVehicle, ply, spawnedVehicle)
 	ply:SetNWEntity("currentVehicle", spawnedVehicle)
@@ -443,7 +467,7 @@ function TCBDealer.storeVehicle(length, ply)
 
 	--> Vehicle
 	local currentVehicle = ply:GetNWEntity("currentVehicle")
-	if IsValid(currentVehicle) and currentVehicle:GetPos():Distance(ply:GetPos()) <= 350 then
+	if IsValid(currentVehicle) and currentVehicle:GetPos():Distance(ply:GetPos()) <= TCBDealer.settings.storeDistance then
 		TCBDealer.removeVehicle(ply)
 		DarkRP.notify(ply, 3, 4, "Your vehicle was stored in your garage!")
 		return
@@ -477,6 +501,23 @@ function TCBDealer.leaveVehicle(ply)
 	end
 end
 hook.Add("PlayerLeaveVehicle", "TCBDealer.leaveVehicle", TCBDealer.leaveVehicle)
+
+--[[---------------------------------------------------------
+	Player Changed
+-----------------------------------------------------------]]
+function TCBDealer.playerChanged(ply)
+	local currentVehicle = ply:GetNWEntity("currentVehicle")
+	if IsValid(currentVehicle) then
+		local vehicle = TCBDealer.vehicleTable[currentVehicle:GetNWString("dealerClass")]
+
+		if vehicle and vehicle.customCheck and !vehicle.customCheck(ply) then
+			TCBDealer.removeVehicle(ply)
+			DarkRP.notify(ply, 1, 4, "You no longer qualify for your vehicle.") 
+			return
+		end
+	end
+end
+hook.Add("OnPlayerChangedTeam", "TCBDealer.playerChanged", TCBDealer.playerChanged)
 
 --[[---------------------------------------------------------
 	Dealer Range

@@ -18,18 +18,20 @@ TCBDealer.vehicleTable = {}
 --[[---------------------------------------------------------
 	Version
 -----------------------------------------------------------]]
-TCBDealer.version = 1.2
+TCBDealer.version = 1.3
 
 --[[---------------------------------------------------------
 	Settings
 -----------------------------------------------------------]]
 TCBDealer.settings.testDriveLength = 20
 TCBDealer.settings.salePercentage = 75
+TCBDealer.settings.storeDistance = 400
 TCBDealer.settings.colorPicker = true
 TCBDealer.settings.randomColor = true
+TCBDealer.settings.checkSpawn = false
 TCBDealer.settings.autoEnter = false
-TCBDealer.settings.npcBubble = true
 TCBDealer.settings.precache = true
+TCBDealer.settings.debug = false
 
 TCBDealer.settings.frameTitle = "TCB"
 
@@ -59,13 +61,13 @@ TCBDealer.dealerSpawns["rp_downtown_v4c_v2"] = {
 	Vehicles - http://facepunch.com/showthread.php?t=1481400
 -----------------------------------------------------------]]
 TCBDealer.vehicleTable["audir8tdm"] = {
-	price = 50000
+	price = 50000,
 }
 
 TCBDealer.vehicleTable["dbstdm"] = {
 	price = 10000,
 
-	customCheck = function(ply) return table.HasValue({"superadmin", "admin"}, ply:GetUserGroup()) end,
+	customCheck = function(ply) return CLIENT or table.HasValue({"superadmin", "admin"}, ply:GetUserGroup()) end,
 	CustomCheckFailMsg = "This vehicle is only available for admins and higher!",
 }
 

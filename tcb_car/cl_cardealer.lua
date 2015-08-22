@@ -214,7 +214,7 @@ local function carDealer()
 	--> Store
 	local cvehicle = nil
 	local currentVehicle = LocalPlayer():GetNWEntity("currentVehicle")
-	if IsValid(currentVehicle) and LocalPlayer():GetPos():Distance(currentVehicle:GetPos()) <= 350 then
+	if IsValid(currentVehicle) and LocalPlayer():GetPos():Distance(currentVehicle:GetPos()) <= TCBDealer.settings.storeDistance then
 		cvehicle = currentVehicle
 	end
 
