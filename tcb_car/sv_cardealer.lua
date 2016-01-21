@@ -21,8 +21,10 @@ util.AddNetworkString("TCBDealerStore")
 -----------------------------------------------------------]]
 function TCBDealer.databaseSetup()
 
+	--> Compatibility
 	local AUTOINCREMENT = MySQLite.isMySQL() and "AUTO_INCREMENT" or "AUTOINCREMENT"
 
+	--> Table
 	MySQLite.query([[
 		CREATE TABLE IF NOT EXISTS tcb_cardealer (
 			id INTEGER NOT NULL PRIMARY KEY ]]..AUTOINCREMENT..[[,
@@ -86,16 +88,19 @@ function TCBDealer.spawnDealer()
 
 				--> Vehicles
 				MySQLite.query(string.format([[SELECT * FROM tcb_cardealer WHERE steamID = %s]], MySQLite.SQLStr(caller:SteamID())), function(data)
+					
+					--> Loop
 					for k, v in pairs(data or {}) do
 						table.insert(vehicles, v.vehicle)
 					end
-				end)
 
-				--> Network
-				net.Start("TCBDealerMenu")
-					net.WriteTable(vehicles)
-					net.WriteInt(dealer.id, 32)
-				net.Send(caller)
+					--> Network
+					net.Start("TCBDealerMenu")
+						net.WriteTable(vehicles)
+						net.WriteInt(dealer.id, 32)
+					net.Send(caller)
+
+				end)
 
 			end
 		end
@@ -128,18 +133,18 @@ hook.Add("InitPostEntity", "TCBDealer.spawnDealer", TCBDealer.spawnDealer)
 local versionCheck = 0
 function TCBDealer.versionCheck()
 
-	// Variables
+	--> Variables
 	versionCheck = versionCheck+1;
 	local newVersion = nil
 
-	// HTTP
+	--> HTTP
 	http.Fetch("https://raw.githubusercontent.com/TheCodingBeast/TCB_CarDealer/master/version.txt",
 		function(body, len, headers, code)
 
-			// Variables
+			--> Variables
 			newVersion = tonumber(body)
 
-			// Check
+			--> Check
 			if TCBDealer.version < newVersion then
 				timer.Create("CarDealerVersion", 30, 0, function()
 					MsgC(Color(0, 255, 0), "[TCB] There is a new version of 'TCB Car Dealer' available.\n")
@@ -151,12 +156,12 @@ function TCBDealer.versionCheck()
 		end,
 		function(error)
 
-			// Warn
+			--> Warn
 			if versionCheck != 1 then
 				MsgC(Color(255, 0, 0), "[TCB] There was an error verifying the version.\n"..error.."\n")
 			end
 
-			// Timer
+			--> Timer
 			timer.Create("CarDealerReVersion", 10, 1, function()
 				TCBDealer.versionCheck()
 			end)
@@ -196,7 +201,7 @@ function TCBDealer.purchaseVehicle(length, ply)
 
 	--> Money
 	if !ply:canAfford(vehicle.price) then
-		DarkRP.notify(ply, 1, 4, "The requested vehicle is not for sale.") 
+		DarkRP.notify(ply, 1, 4, "You can't afford this vehicle.") 
 		return
 	end
 	ply:addMoney(-vehicle.price)
@@ -231,26 +236,30 @@ function TCBDealer.sellVehicle(length, ply)
 	--> Own
 	local vehOwn = {}
 	MySQLite.query(string.format([[SELECT * FROM tcb_cardealer WHERE steamID = %s AND vehicle = %s]], MySQLite.SQLStr(ply:SteamID()), MySQLite.SQLStr(vehID)), function(data)
+		
+		--> Variables
 		vehOwn = data or {}
+
+		--> Own
+		if table.Count(vehOwn) == 0 then
+			DarkRP.notify(ply, 1, 4, "The requested vehicle is not in you garage.") 
+			return 
+		end
+
+		--> Current
+		TCBDealer.removeVehicle(ply)
+
+		--> Money
+		local amount = vehicle.price*(TCBDealer.settings.salePercentage/100)
+		ply:addMoney(amount)
+
+		--> Sell
+		MySQLite.query(string.format([[DELETE FROM tcb_cardealer WHERE steamID = %s AND vehicle = %s]], MySQLite.SQLStr(ply:SteamID()), MySQLite.SQLStr(vehID)))
+
+		--> Notify
+		DarkRP.notify(ply, 3, 4, "You sold your "..vehName.." for "..DarkRP.formatMoney(amount).."!")
+
 	end)
-
-	if table.Count(vehOwn) == 0 then
-		DarkRP.notify(ply, 1, 4, "The requested vehicle is not in you garage.") 
-		return 
-	end
-
-	--> Current
-	TCBDealer.removeVehicle(ply)
-
-	--> Money
-	local amount = vehicle.price*(TCBDealer.settings.salePercentage/100)
-	ply:addMoney(amount)
-
-	--> Sell
-	MySQLite.query(string.format([[DELETE FROM tcb_cardealer WHERE steamID = %s AND vehicle = %s]], MySQLite.SQLStr(ply:SteamID()), MySQLite.SQLStr(vehID)))
-
-	--> Notify
-	DarkRP.notify(ply, 3, 4, "You sold your "..vehName.." for "..DarkRP.formatMoney(amount).."!")
 
 end
 net.Receive("TCBDealerSell", TCBDealer.sellVehicle)
@@ -282,163 +291,180 @@ function TCBDealer.spawnVehicle(length, ply)
 		return
 	end
 
+	--> Function
+	function spawnCode()
+
+		--> Current
+		TCBDealer.removeVehicle(ply)
+
+		--> Dealer
+		if !TCBDealer.dealerSpawns[game.GetMap()][dealerID] then
+			DarkRP.notify(ply, 1, 4, "The car dealer wasn't found.") 
+			return 
+		end
+		local dealer = TCBDealer.dealerSpawns[game.GetMap()][dealerID]
+		
+		local dealerResult = TCBDealer.dealerRange(ply, dealer)
+		if !dealerResult then
+			DarkRP.notify(ply, 1, 4, "You are not in range of the car dealer!") 
+			return 
+		end
+
+		--> Spawns
+		local spawnPoint = {}
+		local debugPoint = ""
+
+		if TCBDealer.settings.checkSpawn then
+			for k,v in pairs(dealer.spawns) do
+				local entities = ents.FindInBox(Vector(v.pos.x + 100, v.pos.y + 100, v.pos.z - 150), Vector(v.pos.x - 100, v.pos.y - 100, v.pos.z + 150))
+				
+				local found = 0
+				for _,v in pairs(entities) do
+					if v:GetClass() != "physgun_beam" then
+						found = 1
+
+						if TCBDealer.settings.debug then
+							debugPoint = debugPoint..v:GetClass()..", "
+						end
+
+						break
+					end
+				end
+
+				if found == 0 then
+					spawnPoint = v
+					break
+				end
+			end
+		else
+			spawnPoint = dealer.spawns[math.random(#dealer.spawns)]
+		end
+
+		if table.Count(spawnPoint) == 0 then
+			DarkRP.notify(ply, 1, 4, "Something is blocking the spawn points.")
+
+			if TCBDealer.settings.debug then
+				DarkRP.notify(ply, 1, 10, "[DEBUG] Classes: "..debugPoint)
+			end
+
+			return 
+		end
+
+		--> Spawn
+		local vehicleList = list.Get("Vehicles")[vehID]
+		if !vehicleList then return end
+
+		local spawnedVehicle = ents.Create(vehicleList.Class)
+		if !spawnedVehicle then return end
+
+		spawnedVehicle:SetModel(vehicleList.Model)
+
+		if vehicleList.KeyValues then
+			for k, v in pairs(vehicleList.KeyValues) do
+				spawnedVehicle:SetKeyValue(k, v)
+			end
+		end
+
+		spawnedVehicle.VehicleTable = vehicleList
+
+		spawnedVehicle:SetPos(spawnPoint.pos)
+		spawnedVehicle:SetAngles(spawnPoint.ang)
+		spawnedVehicle:Spawn()
+		spawnedVehicle:Activate()
+
+		spawnedVehicle:keysOwn(ply)
+		spawnedVehicle:keysLock()
+
+		spawnedVehicle:SetNWString("dealerName", vehicle.name or vehicleList.Name)
+		spawnedVehicle:SetNWString("dealerClass", vehID)
+
+		gamemode.Call(PlayerSpawnedVehicle, ply, spawnedVehicle)
+		ply:SetNWEntity("currentVehicle", spawnedVehicle)
+
+		--> Color
+		if vehicle.color then
+			spawnedVehicle:SetColor(vehicle.color)
+		elseif TCBDealer.settings.colorPicker then
+
+			--> Variables
+			local varColR = ply:GetInfoNum("tcb_cardealer_r", 0)
+			local varColG = ply:GetInfoNum("tcb_cardealer_g", 0)
+			local varColB = ply:GetInfoNum("tcb_cardealer_b", 0)
+
+			--> Checks
+			if varColR < 0 then varColR = 0 elseif varColR > 255 then varColR = 255 end
+			if varColG < 0 then varColG = 0 elseif varColG > 255 then varColR = 255 end
+			if varColB < 0 then varColB = 0 elseif varColB > 255 then varColB = 255 end
+
+			--> Set Color
+			spawnedVehicle:SetColor(Color(varColR, varColG, varColB, 255))
+
+		elseif TCBDealer.settings.randomColor then
+			spawnedVehicle:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
+		end
+
+		--> Test Drive
+		ply.vehicleTest = false
+
+		if timer.Exists("testDrive_"..ply:UniqueID()) then
+			timer.Remove("testDrive_"..ply:UniqueID())
+		end
+
+		if testDrive then
+			timer.Create("testDrive_"..ply:UniqueID(), TCBDealer.settings.testDriveLength, 1, function()
+
+				if IsValid(ply) then
+					ply:ExitVehicle()
+					TCBDealer.removeVehicle(ply)
+				end
+
+				net.Start("TCBDealerChat")
+					net.WriteString("Your test drive ran out!")
+				net.Send(ply)
+
+				ply.vehicleTest = false
+
+			end)
+
+			ply.vehicleTest = true
+
+			net.Start("TCBDealerChat")
+				net.WriteString("You can test drive this vehicle for the next "..TCBDealer.settings.testDriveLength.." seconds!")
+			net.Send(ply)
+		end
+
+		--> Enter
+		if TCBDealer.settings.autoEnter or testDrive then
+			ply:EnterVehicle(spawnedVehicle)
+		end
+
+	end
+
 	--> Own
 	if !testDrive then
 		
 		local vehOwn = {}
 		MySQLite.query(string.format([[SELECT * FROM tcb_cardealer WHERE steamID = %s AND vehicle = %s]], MySQLite.SQLStr(ply:SteamID()), MySQLite.SQLStr(vehID)), function(data)
-			vehOwn = data or {}
-		end)
-
-		if table.Count(vehOwn) == 0 then
-			DarkRP.notify(ply, 1, 4, "The requested vehicle is not in you garage.") 
-			return 
-		end
-
-	end
-
-	--> Current
-	TCBDealer.removeVehicle(ply)
-
-	--> Dealer
-	if !TCBDealer.dealerSpawns[game.GetMap()][dealerID] then
-		DarkRP.notify(ply, 1, 4, "The car dealer wasn't found.") 
-		return 
-	end
-	local dealer = TCBDealer.dealerSpawns[game.GetMap()][dealerID]
-	
-	local dealerResult = TCBDealer.dealerRange(ply, dealer)
-	if !dealerResult then
-		DarkRP.notify(ply, 1, 4, "You are not in range of the car dealer!") 
-		return 
-	end
-
-	--> Spawns
-	local spawnPoint = {}
-	local debugPoint = ""
-
-	if TCBDealer.settings.checkSpawn then
-		for k,v in pairs(dealer.spawns) do
-			local entities = ents.FindInBox(Vector(v.pos.x + 100, v.pos.y + 100, v.pos.z - 150), Vector(v.pos.x - 100, v.pos.y - 100, v.pos.z + 150))
 			
-			local found = 0
-			for _,v in pairs(entities) do
-				if v:GetClass() != "physgun_beam" then
-					found = 1
+			--> Variables
+			vehOwn = data or {}
 
-					if TCBDealer.settings.debug then
-						debugPoint = debugPoint..v:GetClass()..", "
-					end
-
-					break
-				end
+			--> Own
+			if table.Count(vehOwn) == 0 then
+				DarkRP.notify(ply, 1, 4, "The requested vehicle is not in you garage.") 
+				return 
 			end
 
-			if found == 0 then
-				spawnPoint = v
-				break
-			end
-		end
-	else
-		spawnPoint = dealer.spawns[math.random(#dealer.spawns)]
-	end
-
-	if table.Count(spawnPoint) == 0 then
-		DarkRP.notify(ply, 1, 4, "Something is blocking the spawn points.")
-
-		if TCBDealer.settings.debug then
-			DarkRP.notify(ply, 1, 10, "[DEBUG] Classes: "..debugPoint)
-		end
-
-		return 
-	end
-
-	--> Spawn
-	local vehicleList = list.Get("Vehicles")[vehID]
-	if !vehicleList then return end
-
-	local spawnedVehicle = ents.Create(vehicleList.Class)
-	if !spawnedVehicle then return end
-
-	spawnedVehicle:SetModel(vehicleList.Model)
-
-	if vehicleList.KeyValues then
-		for k, v in pairs(vehicleList.KeyValues) do
-			spawnedVehicle:SetKeyValue(k, v)
-		end
-	end
-
-	spawnedVehicle.VehicleTable = vehicleList
-
-	spawnedVehicle:SetPos(spawnPoint.pos)
-	spawnedVehicle:SetAngles(spawnPoint.ang)
-	spawnedVehicle:Spawn()
-	spawnedVehicle:Activate()
-
-	spawnedVehicle:keysOwn(ply)
-	spawnedVehicle:keysLock()
-
-	spawnedVehicle:SetNWString("dealerName", vehicle.name or vehicleList.Name)
-	spawnedVehicle:SetNWString("dealerClass", vehID)
-
-	gamemode.Call(PlayerSpawnedVehicle, ply, spawnedVehicle)
-	ply:SetNWEntity("currentVehicle", spawnedVehicle)
-
-	--> Color
-	if vehicle.color then
-		spawnedVehicle:SetColor(vehicle.color)
-	elseif TCBDealer.settings.colorPicker then
-
-		--> Variables
-		local varColR = ply:GetInfoNum("tcb_cardealer_r", 0)
-		local varColG = ply:GetInfoNum("tcb_cardealer_g", 0)
-		local varColB = ply:GetInfoNum("tcb_cardealer_b", 0)
-
-		--> Checks
-		if varColR < 0 then varColR = 0 elseif varColR > 255 then varColR = 255 end
-		if varColG < 0 then varColG = 0 elseif varColG > 255 then varColR = 255 end
-		if varColB < 0 then varColB = 0 elseif varColB > 255 then varColB = 255 end
-
-		--> Set Color
-		spawnedVehicle:SetColor(Color(varColR, varColG, varColB, 255))
-
-	elseif TCBDealer.settings.randomColor then
-		spawnedVehicle:SetColor(Color(math.random(0, 255), math.random(0, 255), math.random(0, 255), 255))
-	end
-
-	--> Test Drive
-	ply.vehicleTest = false
-
-	if timer.Exists("testDrive_"..ply:UniqueID()) then
-		timer.Remove("testDrive_"..ply:UniqueID())
-	end
-
-	if testDrive then
-		timer.Create("testDrive_"..ply:UniqueID(), TCBDealer.settings.testDriveLength, 1, function()
-
-			if IsValid(ply) then
-				ply:ExitVehicle()
-				TCBDealer.removeVehicle(ply)
-			end
-
-			net.Start("TCBDealerChat")
-				net.WriteString("Your test drive ran out!")
-			net.Send(ply)
-
-			ply.vehicleTest = false
+			--> Code
+			spawnCode()
 
 		end)
 
-		ply.vehicleTest = true
+	else
 
-		net.Start("TCBDealerChat")
-			net.WriteString("You can test drive this vehicle for the next "..TCBDealer.settings.testDriveLength.." seconds!")
-		net.Send(ply)
-	end
-
-	--> Enter
-	if TCBDealer.settings.autoEnter or testDrive then
-		ply:EnterVehicle(spawnedVehicle)
+		--> Code
+		spawnCode()
+		
 	end
 
 end
@@ -485,7 +511,10 @@ net.Receive("TCBDealerStore", TCBDealer.storeVehicle)
 function TCBDealer.removeVehicle(ply)
 	local currentVehicle = ply:GetNWEntity("currentVehicle")
 	if IsValid(currentVehicle) then
+
+		--> Remove
 		currentVehicle:Remove()
+
 	end
 end
 hook.Add("PlayerDisconnected", "TCBDealer.removeVehicle", TCBDealer.removeVehicle)
@@ -496,8 +525,11 @@ hook.Add("PlayerDisconnected", "TCBDealer.removeVehicle", TCBDealer.removeVehicl
 function TCBDealer.leaveVehicle(ply)
 	local currentVehicle = ply:GetNWEntity("currentVehicle")
 	if IsValid(currentVehicle) and ply.vehicleTest == true then
+
+		--> Variables
 		currentVehicle:Remove()
 		ply.vehicleTest = false
+
 	end
 end
 hook.Add("PlayerLeaveVehicle", "TCBDealer.leaveVehicle", TCBDealer.leaveVehicle)
@@ -508,13 +540,17 @@ hook.Add("PlayerLeaveVehicle", "TCBDealer.leaveVehicle", TCBDealer.leaveVehicle)
 function TCBDealer.playerChanged(ply)
 	local currentVehicle = ply:GetNWEntity("currentVehicle")
 	if IsValid(currentVehicle) then
+
+		--> Variables
 		local vehicle = TCBDealer.vehicleTable[currentVehicle:GetNWString("dealerClass")]
 
+		--> Qualify
 		if vehicle and vehicle.customCheck and !vehicle.customCheck(ply) then
 			TCBDealer.removeVehicle(ply)
 			DarkRP.notify(ply, 1, 4, "You no longer qualify for your vehicle.") 
 			return
 		end
+
 	end
 end
 hook.Add("OnPlayerChangedTeam", "TCBDealer.playerChanged", TCBDealer.playerChanged)
@@ -523,5 +559,8 @@ hook.Add("OnPlayerChangedTeam", "TCBDealer.playerChanged", TCBDealer.playerChang
 	Dealer Range
 -----------------------------------------------------------]]
 function TCBDealer.dealerRange(ply, dealer)
+
+	--> Return
 	return ply:GetPos():Distance(dealer.pos) <= 200
+
 end

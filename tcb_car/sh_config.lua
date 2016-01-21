@@ -18,7 +18,7 @@ TCBDealer.vehicleTable = {}
 --[[---------------------------------------------------------
 	Version
 -----------------------------------------------------------]]
-TCBDealer.version = 1.3
+TCBDealer.version = 1.4
 
 --[[---------------------------------------------------------
 	Settings
@@ -58,7 +58,7 @@ TCBDealer.dealerSpawns["rp_downtown_v4c_v2"] = {
 }
 
 --[[---------------------------------------------------------
-	Vehicles - http://facepunch.com/showthread.php?t=1481400
+	Vehicles - http://facepunch.com/showthread.php?t=1481400 / https://www.youtube.com/watch?v=WSTBFk6nX6k
 -----------------------------------------------------------]]
 TCBDealer.vehicleTable["audir8tdm"] = {
 	price = 50000,
